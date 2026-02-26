@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KEKESHI — Анализ результатов продаж</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;900&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161920;
+    --surface2: #1e2230;
+    --border: #2a2f40;
+    --accent: #e63946;
+    --accent2: #f4a261;
+    --green: #2dc653;
+    --blue: #4895ef;
+    --yellow: #ffd166;
+    --text: #e8eaf0;
+    --muted: #7a8099;
+    --card-bg: #1a1e2a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Onest', sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
+
+  .header {
+    background: linear-gradient(135deg, #0d0f14 0%, #1a0a10 50%, #0d0f14 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 40px 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(230,57,70,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .header-meta { font-family: 'Unbounded', sans-serif; font-size: 10px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; margin-bottom: 12px; }
+  .header h1 { font-family: 'Unbounded', sans-serif; font-size: 30px; font-weight: 900; color: var(--text); line-height: 1.2; }
+  .header h1 span { color: var(--accent); }
+  .header-sub { color: var(--muted); font-size: 14px; margin-top: 8px; }
+  .header-tags { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+  .tag { background: var(--surface2); border: 1px solid var(--border); padding: 4px 14px; border-radius: 20px; font-size: 11px; color: var(--muted); }
+  .tag.red { border-color: rgba(230,57,70,0.4); color: var(--accent); }
+  .tag.green { border-color: rgba(45,198,83,0.4); color: var(--green); }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 40px 60px; }
+  
+  .section-header { margin: 48px 0 24px; }
+  .section-header h2 { font-family: 'Unbounded', sans-serif; font-size: 18px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 12px; }
+  .section-header h2::before { content: ''; display: block; width: 4px; height: 22px; background: var(--accent); border-radius: 2px; }
+  .section-header p { color: var(--muted); font-size: 13px; margin-top: 6px; margin-left: 16px; }
+
+  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .metrics-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .metric-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; position: relative; overflow: hidden; }
+  .metric-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .metric-card.red::after { background: var(--accent); }
+  .metric-card.green::after { background: var(--green); }
+  .metric-card.blue::after { background: var(--blue); }
+  .metric-card.yellow::after { background: var(--yellow); }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .metric-value { font-family: 'Unbounded', sans-serif; font-size: 24px; font-weight: 700; color: var(--text); }
+  .metric-value.red { color: var(--accent); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.blue { color: var(--blue); }
+  .metric-value.yellow { color: var(--yellow); }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .metric-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-top: 6px; }
+  .badge-up { background: rgba(45,198,83,0.15); color: var(--green); }
+  .badge-down { background: rgba(230,57,70,0.15); color: var(--accent); }
+  .badge-neutral { background: rgba(244,162,97,0.15); color: var(--accent2); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .card-title { font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 16px; }
+
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+  .bar-item { }
+  .bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .bar-label .name { color: var(--text); max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-label .val { color: var(--text); font-weight: 600; flex-shrink: 0; }
+  .bar-track { background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-fill.red { background: linear-gradient(90deg, #e63946, #ff6b6b); }
+  .bar-fill.blue { background: linear-gradient(90deg, #4895ef, #7abfff); }
+  .bar-fill.kekeshi { background: linear-gradient(90deg, #f4a261, #ffd166); }
+  .bar-fill.other { background: linear-gradient(90deg, #5a6480, #8a91a8); }
+  .bar-fill.green { background: linear-gradient(90deg, #2dc653, #78e895); }
+
+  .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .data-table th { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 500; }
+  .data-table td { padding: 10px 12px; border-bottom: 1px solid rgba(42,47,64,0.5); color: var(--text); vertical-align: middle; }
+  .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .data-table .ours td { background: rgba(244,162,97,0.05); }
+  .data-table .ours td:first-child { border-left: 2px solid var(--accent2); }
+  .rank-badge { display: inline-block; width: 22px; height: 22px; border-radius: 50%; font-size: 10px; font-weight: 700; text-align: center; line-height: 22px; }
+  .rank-1 { background: var(--accent); color: white; }
+  .rank-2 { background: var(--accent2); color: white; }
+  .rank-3 { background: var(--yellow); color: #000; }
+  .rank-n { background: var(--surface2); color: var(--muted); }
+  .star-rating { color: var(--yellow); }
+  .star-bad { color: var(--accent); }
+
+  a.product-link { color: var(--blue); text-decoration: none; font-size: 10px; display: inline-block; margin-top: 2px; }
+  a.product-link:hover { text-decoration: underline; }
+
+  .plan-block { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .plan-row { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .plan-row:last-child { border-bottom: none; }
+  .plan-scenario { font-size: 12px; color: var(--muted); min-width: 130px; }
+  .plan-bar-wrap { display: flex; align-items: center; gap: 10px; flex: 1; }
+  .plan-bar-track { flex: 1; background: var(--surface2); border-radius: 4px; height: 10px; overflow: hidden; }
+  .plan-bar-fill { height: 100%; border-radius: 4px; }
+  .plan-value { font-family: 'Unbounded', sans-serif; font-size: 12px; font-weight: 700; min-width: 80px; text-align: right; }
+
+  .review-pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .review-pill { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .pill-green { background: rgba(45,198,83,0.15); color: var(--green); border: 1px solid rgba(45,198,83,0.3); }
+  .pill-red { background: rgba(230,57,70,0.15); color: var(--accent); border: 1px solid rgba(230,57,70,0.3); }
+  .pill-yellow { background: rgba(255,209,102,0.15); color: var(--yellow); border: 1px solid rgba(255,209,102,0.3); }
+  .pill-blue { background: rgba(72,149,239,0.15); color: var(--blue); border: 1px solid rgba(72,149,239,0.3); }
+
+  .review-quote { background: var(--surface2); border-left: 3px solid var(--accent2); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 12px; color: var(--muted); margin: 6px 0; font-style: italic; line-height: 1.5; }
+  .review-quote.bad { border-left-color: var(--accent); }
+  .review-quote.good { border-left-color: var(--green); }
+  .review-quote.blue { border-left-color: var(--blue); }
+  .review-sku { font-size: 10px; color: var(--accent2); font-weight: 600; font-style: normal; }
+
+  .star-dist { display: flex; flex-direction: column; gap: 6px; }
+  .star-row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .star-label { min-width: 20px; color: var(--muted); }
+  .star-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .star-fill { height: 100%; border-radius: 4px; }
+  .star-fill-5 { background: var(--green); }
+  .star-fill-4 { background: #78c99f; }
+  .star-fill-3 { background: var(--yellow); }
+  .star-fill-2 { background: var(--accent2); }
+  .star-fill-1 { background: var(--accent); }
+  .star-count { min-width: 35px; text-align: right; color: var(--muted); font-size: 10px; }
+
+  .alert { border-radius: 10px; padding: 16px 20px; margin: 16px 0; font-size: 13px; line-height: 1.6; }
+  .alert-red { background: rgba(230,57,70,0.08); border: 1px solid rgba(230,57,70,0.3); }
+  .alert-green { background: rgba(45,198,83,0.08); border: 1px solid rgba(45,198,83,0.3); }
+  .alert-yellow { background: rgba(255,209,102,0.08); border: 1px solid rgba(255,209,102,0.3); }
+  .alert-blue { background: rgba(72,149,239,0.08); border: 1px solid rgba(72,149,239,0.3); }
+  .alert-orange { background: rgba(244,162,97,0.08); border: 1px solid rgba(244,162,97,0.3); }
+  .alert strong { display: block; margin-bottom: 6px; }
+
+  .defense-card { background: linear-gradient(135deg, rgba(230,57,70,0.05), rgba(244,162,97,0.05)); border: 1px solid rgba(244,162,97,0.3); border-radius: 12px; padding: 28px; position: relative; }
+  .defense-card::before { content: '⚖️'; position: absolute; top: 24px; right: 24px; font-size: 28px; opacity: 0.5; }
+  .defense-point { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
+  .defense-num { font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 700; color: var(--accent2); background: rgba(244,162,97,0.15); width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+  .defense-text { font-size: 13px; color: var(--text); }
+  .defense-text strong { color: var(--accent2); }
+
+  .insight-list { display: flex; flex-direction: column; gap: 10px; }
+  .insight-item { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+  .insight-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  .share-visual { text-align: center; padding: 10px 0; }
+  .share-number { font-family: 'Unbounded', sans-serif; font-size: 38px; font-weight: 900; }
+  .share-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .nav-tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .nav-tab { padding: 8px 18px; border-radius: 8px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); color: var(--muted); background: transparent; font-family: 'Onest', sans-serif; transition: all .2s; }
+  .nav-tab.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .review-card { background: var(--surface2); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+  .review-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .review-card .stars { color: var(--yellow); font-size: 13px; }
+  .review-card .stars.bad { color: var(--accent); }
+  .review-card .sku-tag { font-size: 10px; color: var(--accent2); font-weight: 600; background: rgba(244,162,97,0.1); padding: 2px 8px; border-radius: 10px; }
+  .review-card .text { font-size: 12px; color: var(--text); line-height: 1.5; }
+
+  .insight-box { background: linear-gradient(135deg, rgba(72,149,239,0.05), rgba(45,198,83,0.05)); border: 1px solid rgba(72,149,239,0.2); border-radius: 12px; padding: 20px 24px; }
+  .insight-box-title { font-family: 'Unbounded', sans-serif; font-size: 12px; color: var(--blue); margin-bottom: 14px; }
+
+  .footer { background: var(--surface); border-top: 1px solid var(--border); padding: 24px 60px; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+
+  @media (max-width: 900px) {
+    .container { padding: 20px; }
+    .header { padding: 24px 20px; }
+    .metrics-row, .metrics-row-3 { grid-template-columns: 1fr 1fr; }
+    .two-col, .three-col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-meta">Аналитический отчёт · KEKESHI Ramen · Marketplace Analysis</div>
+  <h1>Конкурентный анализ <span>KEKESHI</span><br>Рамен быстрого приготовления</h1>
+  <div class="header-sub">Период данных: 28.11.2025 — 25.02.2026 (89 дней) · Ozon + Wildberries · Продавец: Resfood / ООО Альбатрос</div>
+  <div class="header-tags">
+    <span class="tag">5 SKU на каждой платформе</span>
+    <span class="tag">Bull Ramen Carbonara · Bull Bull K-Ramen · Jiangster Black Bean · Easy Veggie · Plain Noodles</span>
+    <span class="tag green">Дата анализа: 26.02.2026</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ -->
+  <div class="section-header">
+    <h2>Ключевые показатели за период (89 дней)</h2>
+    <p>Суммарно по обеим платформам</p>
+  </div>
+
+  <div class="metrics-row">
+    <div class="metric-card green">
+      <div class="metric-label">Совокупная выручка</div>
+      <div class="metric-value green">1 289K ₽</div>
+      <div class="metric-sub">Ozon 778K + WB 511K</div>
+      <span class="metric-badge badge-up">↑ Выше консервативного плана</span>
+    </div>
+    <div class="metric-card blue">
+      <div class="metric-label">Продано упаковок</div>
+      <div class="metric-value blue">2 304 шт</div>
+      <div class="metric-sub">Ozon 1 309 + WB 995</div>
+      <span class="metric-badge badge-neutral">~26 шт/день</span>
+    </div>
+    <div class="metric-card yellow">
+      <div class="metric-label">Остаток на складах МП</div>
+      <div class="metric-value yellow">2 450 шт</div>
+      <div class="metric-sub">Ozon 1 711 + WB 739</div>
+      <span class="metric-badge badge-neutral">Требует работы</span>
+    </div>
+    <div class="metric-card red">
+      <div class="metric-label">Средний рейтинг</div>
+      <div class="metric-value red">4.76 ★</div>
+      <div class="metric-sub">WB: 3.8–5.0 · Ozon: 4.8</div>
+      <span class="metric-badge badge-down">WB Карбонара 3.8★ ⚠</span>
+    </div>
+  </div>
+
+  <!-- ПОЗИЦИЯ ПРОДАВЦА НА РЫНКЕ -->
+  <div class="section-header">
+    <h2>Позиция продавца на рынке</h2>
+    <p>Фильтрация: только корейский/азиатский рамен (Samyang, Buldak, Nongshim, Ottogi, Hot Chicken, Korean Ramen и др.) · Доширак, вермишель, удон — исключены · Только товары с продажами</p>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">🛒 Wildberries — ООО Альбатрос</div>
+      <div style="display:flex;gap:24px;align-items:center;margin-bottom:20px">
+        <div class="share-visual">
+          <div class="share-number" style="color:var(--accent2)">#23</div>
+          <div class="share-label">Место в сегменте<br>корейского рамена</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--text);margin-bottom:6px">Наша выручка за период: <strong>511 K ₽</strong></div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Доля в сегменте: <strong style="color:var(--accent2)">0.77%</strong></div>
+          <div style="font-size:11px;color:var(--muted)">Объём сегмента WB: <strong style="color:var(--text)">65.9 млн ₽</strong> за период</div>
+        </div>
+      </div>
+      <div class="bar-chart">
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.wildberries.ru/catalog/73785637/detail.aspx" target="_blank" style="color:var(--text);text-decoration:none">ИП Алиева З А — топ SKU ↗</a></span>
+            <span class="val">11.2 млн · 17.0%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:100%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.wildberries.ru/catalog/212877057/detail.aspx" target="_blank" style="color:var(--text);text-decoration:none">KOI Store — топ SKU ↗</a></span>
+            <span class="val">9.2 млн · 13.9%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:82%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.wildberries.ru/catalog/314845043/detail.aspx" target="_blank" style="color:var(--text);text-decoration:none">ООО Ориенталь — топ SKU ↗</a></span>
+            <span class="val">6.5 млн · 9.9%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:58%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.wildberries.ru/catalog/582290226/detail.aspx" target="_blank" style="color:var(--text);text-decoration:none">ИП Марченко О В — топ SKU ↗</a></span>
+            <span class="val">4.9 млн · 7.4%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:43%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.wildberries.ru/catalog/117979809/detail.aspx" target="_blank" style="color:var(--text);text-decoration:none">ИП Дубровский М Г — топ SKU ↗</a></span>
+            <span class="val">4.5 млн · 6.8%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:40%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.wildberries.ru/catalog/445633060/detail.aspx" target="_blank" style="color:var(--text);text-decoration:none">ООО Альтаир — топ SKU ↗</a></span>
+            <span class="val">3.4 млн · 5.1%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill other" style="width:30%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.wildberries.ru/catalog/195622331/detail.aspx" target="_blank" style="color:var(--text);text-decoration:none">ИП Прокошенков А Н — топ SKU ↗</a></span>
+            <span class="val">3.2 млн · 4.8%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill other" style="width:28%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.wildberries.ru/catalog/326378474/detail.aspx" target="_blank" style="color:var(--text);text-decoration:none">ООО Сают Плюс — топ SKU ↗</a></span>
+            <span class="val">2.6 млн · 4.0%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill other" style="width:24%"></div></div>
+        </div>
+        <div class="bar-item" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border)">
+          <div class="bar-label">
+            <span class="name" style="color:var(--accent2)">⭐ <a href="https://www.wildberries.ru/catalog/559190717/detail.aspx" target="_blank" style="color:var(--accent2);text-decoration:none">ООО Альбатрос (Kekeshi) — топ SKU ↗</a></span>
+            <span class="val" style="color:var(--accent2)">511 K · 0.77%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill kekeshi" style="width:4.5%"></div></div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted)">
+        💡 #23 в чистом сегменте корейского рамена — <strong style="color:var(--green)">в топ-25 из прямых конкурентов</strong>. Лидеры (#1–#8) торгуют Samyang/Hot Chicken с десятками SKU, у нас 5 SKU нового бренда.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🟠 Ozon — Resfood</div>
+      <div style="display:flex;gap:24px;align-items:center;margin-bottom:20px">
+        <div class="share-visual">
+          <div class="share-number" style="color:var(--blue)">#13</div>
+          <div class="share-label">Место в сегменте<br>корейского рамена</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--text);margin-bottom:6px">Наша выручка за период: <strong>778 K ₽</strong></div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Доля в сегменте: <strong style="color:var(--accent2)">1.08%</strong></div>
+          <div style="font-size:11px;color:var(--muted)">Объём сегмента Ozon: <strong style="color:var(--text)">71.9 млн ₽</strong> за период</div>
+        </div>
+      </div>
+      <div class="bar-chart">
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.ozon.ru/context/detail/id/1699514013/" target="_blank" style="color:var(--text);text-decoration:none">KOI — топ SKU ↗</a></span>
+            <span class="val">13.3 млн · 18.5%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:100%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.ozon.ru/context/detail/id/1389060529/" target="_blank" style="color:var(--text);text-decoration:none">Япон Макарон — топ SKU ↗</a></span>
+            <span class="val">9.3 млн · 13.0%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:70%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.ozon.ru/context/detail/id/1574034867/" target="_blank" style="color:var(--text);text-decoration:none">ИП Алиева З А (Ozon) — топ SKU ↗</a></span>
+            <span class="val">9.0 млн · 12.5%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:67%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.ozon.ru/context/detail/id/2920061578/" target="_blank" style="color:var(--text);text-decoration:none">Рамен Мастер — топ SKU ↗</a></span>
+            <span class="val">9.0 млн · 12.5%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:67%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.ozon.ru/context/detail/id/1363508479/" target="_blank" style="color:var(--text);text-decoration:none">Алиева.М.А — топ SKU ↗</a></span>
+            <span class="val">5.0 млн · 7.0%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill red" style="width:38%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.ozon.ru/context/detail/id/332194198/" target="_blank" style="color:var(--text);text-decoration:none">DUBROVSKY — топ SKU ↗</a></span>
+            <span class="val">4.1 млн · 5.6%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill other" style="width:30%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.ozon.ru/context/detail/id/2383064737/" target="_blank" style="color:var(--text);text-decoration:none">FREESTYLE — топ SKU ↗</a></span>
+            <span class="val">3.0 млн · 4.2%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill other" style="width:22%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label">
+            <span class="name"><a href="https://www.ozon.ru/context/detail/id/3115176432/" target="_blank" style="color:var(--text);text-decoration:none">Вкусы Востока — топ SKU ↗</a></span>
+            <span class="val">2.6 млн · 3.7%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill other" style="width:20%"></div></div>
+        </div>
+        <div class="bar-item" style="margin-top:4px;padding-top:4px;border-top:1px solid var(--border)">
+          <div class="bar-label">
+            <span class="name" style="color:var(--accent2)">⭐ <a href="https://www.ozon.ru/context/detail/id/2946475312/" target="_blank" style="color:var(--accent2);text-decoration:none">Resfood (Kekeshi) — топ SKU ↗</a></span>
+            <span class="val" style="color:var(--accent2)">778 K · 1.08%</span>
+          </div>
+          <div class="bar-track"><div class="bar-fill kekeshi" style="width:5.8%"></div></div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted)">
+        💡 #13 в сегменте — <strong style="color:var(--green)">прямо за Zaire (#12, 778.6K)</strong>, с практически одинаковой выручкой. Сравните: у топ-4 — сотни SKU, мы входим в топ-15 с 5 SKU за первые 3 месяца.
+      </div>
+    </div>
+  </div>
+
+  <!-- ПЛАН VS ФАКТ -->
+  <div class="section-header">
+    <h2>Сравнение с прогнозом (план vs факт)</h2>
+    <p>Исходный анализ августа 2025 строился на данных Ozon. Сравниваем Ozon-выручку по месяцам.</p>
+  </div>
+
+  <div class="plan-block">
+    <div class="card-title">Выручка в месяц (5 товаров, Ozon)</div>
+    <div class="plan-row">
+      <div class="plan-scenario">Консерватив. план<br><span style="font-size:10px;color:#5a6480">205 000 ₽/мес</span></div>
+      <div class="plan-bar-wrap">
+        <div class="plan-bar-track"><div class="plan-bar-fill" style="width:100%;background:#4895ef;"></div></div>
+        <div class="plan-value" style="color:#4895ef">205 K</div>
+      </div>
+    </div>
+    <div class="plan-row">
+      <div class="plan-scenario" style="color:var(--accent2)">✅ ФАКТ Ozon<br><span style="font-size:10px">~259 000 ₽/мес</span></div>
+      <div class="plan-bar-wrap">
+        <div class="plan-bar-track"><div class="plan-bar-fill" style="width:100%;background:linear-gradient(90deg,#f4a261,#ffd166);"></div></div>
+        <div class="plan-value" style="color:#f4a261">259 K <span style="font-size:9px;color:#2dc653">+26%</span></div>
+      </div>
+    </div>
+    <div class="plan-row">
+      <div class="plan-scenario">Умеренный план<br><span style="font-size:10px;color:#5a6480">297 000 ₽/мес</span></div>
+      <div class="plan-bar-wrap">
+        <div class="plan-bar-track"><div class="plan-bar-fill" style="width:100%;background:#7a8099;"></div></div>
+        <div class="plan-value" style="color:#7a8099">297 K</div>
+      </div>
+    </div>
+    <div class="plan-row">
+      <div class="plan-scenario" style="color:var(--green)">➕ WB (доп. канал)<br><span style="font-size:10px">~170 000 ₽/мес</span></div>
+      <div class="plan-bar-wrap">
+        <div class="plan-bar-track"><div class="plan-bar-fill" style="width:83%;background:#2dc653;"></div></div>
+        <div class="plan-value" style="color:#2dc653">+170 K</div>
+      </div>
+    </div>
+    <div class="plan-row">
+      <div class="plan-scenario" style="color:var(--green)">✅ ИТОГО (обе МП)<br><span style="font-size:10px">~429 000 ₽/мес</span></div>
+      <div class="plan-bar-wrap">
+        <div class="plan-bar-track"><div class="plan-bar-fill" style="width:100%;background:linear-gradient(90deg,#2dc653,#78e895);"></div></div>
+        <div class="plan-value" style="color:#2dc653">429 K</div>
+      </div>
+    </div>
+    <div class="alert alert-green" style="margin-top:16px">
+      <strong>📊 Вывод: финансовый план выполнен и перевыполнен</strong>
+      Ozon-выручка ~259K/мес превышает консервативный прогноз (205K) на <strong>+26%</strong>. WB — дополнительный канал, который в исходном анализе вообще не планировался. Суммарно по двум платформам ~429K/мес — это уровень агрессивного сценария Ozon + полноценный второй канал сбыта.
+    </div>
+    <div class="alert alert-red">
+      <strong>⚠️ Расхождение с рекомендациями: объём закупки</strong>
+      Анализ рекомендовал <strong>старт с 2–3 продуктов</strong> (острый + карбонара), постепенное расширение через 3–6 месяцев. Фактически закупили 5 SKU одновременно в объёме ~3 500 шт каждого. При текущем темпе реализации это потребует значительно больше времени, чем срок годности. <strong>Эта ситуация связана с решением о закупке, а не с темпом продаж.</strong>
+    </div>
+  </div>
+
+  <!-- НАШИ ТОВАРЫ -->
+  <div class="section-header">
+    <h2>Наши товары — детализация</h2>
+    <p>Ссылки для быстрой проверки на маркетплейсах</p>
+  </div>
+
+  <div class="card" style="overflow-x:auto">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Товар</th>
+          <th>Выручка WB</th>
+          <th>Прод. WB</th>
+          <th>Рейт. WB</th>
+          <th>Ост. WB</th>
+          <th>Выручка Ozon</th>
+          <th>Прод. Ozon</th>
+          <th>Рейт. Ozon</th>
+          <th>Ост. Ozon</th>
+          <th>Итого</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="ours">
+          <td><span class="rank-badge rank-1">1</span></td>
+          <td style="font-size:11px">
+            <strong>Bull Ramen Carbonara</strong><br>
+            <a class="product-link" href="https://www.wildberries.ru/catalog/559190717/detail.aspx" target="_blank">WB #559190717 ↗</a><br>
+            <a class="product-link" href="https://www.ozon.ru/context/detail/id/2946475312/" target="_blank">Ozon #2946475312 ↗</a>
+          </td>
+          <td>206 610 ₽</td>
+          <td>396</td>
+          <td><span class="star-bad">3.8 ★ ⚠</span></td>
+          <td style="color:var(--muted)">240</td>
+          <td>286 916 ₽</td>
+          <td>495</td>
+          <td><span class="star-rating">4.8 ★</span></td>
+          <td style="color:var(--muted)">419</td>
+          <td style="font-weight:700;color:var(--accent2)">493 526 ₽</td>
+        </tr>
+        <tr class="ours">
+          <td><span class="rank-badge rank-2">2</span></td>
+          <td style="font-size:11px">
+            <strong>Bull Bull K-Ramen Original</strong><br>
+            <a class="product-link" href="https://www.wildberries.ru/catalog/559445792/detail.aspx" target="_blank">WB #559445792 ↗</a><br>
+            <a class="product-link" href="https://www.ozon.ru/context/detail/id/2946474488/" target="_blank">Ozon #2946474488 ↗</a>
+          </td>
+          <td>114 706 ₽</td>
+          <td>241</td>
+          <td><span class="star-rating">4.59 ★</span></td>
+          <td style="color:var(--muted)">226</td>
+          <td>145 863 ₽</td>
+          <td>253</td>
+          <td><span class="star-rating">4.8 ★</span></td>
+          <td style="color:var(--muted)">560</td>
+          <td style="font-weight:700;color:var(--accent2)">260 569 ₽</td>
+        </tr>
+        <tr class="ours">
+          <td><span class="rank-badge rank-3">3</span></td>
+          <td style="font-size:11px">
+            <strong>Jiangster Black Bean Ramen</strong><br>
+            <a class="product-link" href="https://www.wildberries.ru/catalog/559365930/detail.aspx" target="_blank">WB #559365930 ↗</a><br>
+            <a class="product-link" href="https://www.ozon.ru/context/detail/id/2946475448/" target="_blank">Ozon #2946475448 ↗</a>
+          </td>
+          <td>75 497 ₽</td>
+          <td>129</td>
+          <td><span class="star-rating">5.0 ★</span></td>
+          <td style="color:var(--muted)">142</td>
+          <td>197 899 ₽</td>
+          <td>310</td>
+          <td><span class="star-rating">4.8 ★</span></td>
+          <td style="color:var(--muted)">341</td>
+          <td style="font-weight:700;color:var(--accent2)">273 396 ₽</td>
+        </tr>
+        <tr class="ours">
+          <td><span class="rank-badge rank-n">4</span></td>
+          <td style="font-size:11px">
+            <strong>Mild Flavour Easy Veggie</strong><br>
+            <a class="product-link" href="https://www.wildberries.ru/catalog/559326814/detail.aspx" target="_blank">WB #559326814 ↗</a><br>
+            <a class="product-link" href="https://www.ozon.ru/context/detail/id/2946475250/" target="_blank">Ozon #2946475250 ↗</a>
+          </td>
+          <td>76 045 ₽</td>
+          <td>147</td>
+          <td><span class="star-rating">4.73 ★</span></td>
+          <td style="color:var(--muted)">71</td>
+          <td>95 270 ₽</td>
+          <td>155</td>
+          <td><span class="star-rating">4.8 ★</span></td>
+          <td style="color:var(--muted)">161</td>
+          <td style="font-weight:700;color:var(--accent2)">171 315 ₽</td>
+        </tr>
+        <tr class="ours">
+          <td><span class="rank-badge rank-n">5</span></td>
+          <td style="font-size:11px">
+            <strong>Korean Ramen Plain Noodles</strong><br>
+            <a class="product-link" href="https://www.wildberries.ru/catalog/559225585/detail.aspx" target="_blank">WB #559225585 ↗</a><br>
+            <a class="product-link" href="https://www.ozon.ru/context/detail/id/2946476585/" target="_blank">Ozon #2946476585 ↗</a>
+          </td>
+          <td>37 527 ₽</td>
+          <td>82</td>
+          <td><span class="star-rating">5.0 ★</span></td>
+          <td style="color:var(--muted)">60</td>
+          <td>52 466 ₽</td>
+          <td>96</td>
+          <td><span class="star-rating">4.8 ★</span></td>
+          <td style="color:var(--muted)">230</td>
+          <td style="font-weight:700;color:var(--accent2)">89 993 ₽</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- АНАЛИЗ ОТЗЫВОВ -->
+  <div class="section-header">
+    <h2>Глубокий анализ отзывов</h2>
+    <p>WB: 262 отзыва (SKU 559190717) · Ozon: 131 отзыв (5 наших SKU, из них 31 с развёрнутым текстом)</p>
+  </div>
+
+  <div class="two-col" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-title">⭐ WB — распределение оценок (262 отзыва)</div>
+      <div style="display:flex;gap:20px;align-items:center">
+        <div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:34px;font-weight:900;color:var(--yellow)">4.77</div>
+          <div style="font-size:11px;color:var(--muted)">Средняя оценка</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">262 отзыва</div>
+        </div>
+        <div class="star-dist" style="flex:1">
+          <div class="star-row"><span class="star-label">5★</span><div class="star-track"><div class="star-fill star-fill-5" style="width:92.7%"></div></div><span class="star-count">243</span></div>
+          <div class="star-row"><span class="star-label">4★</span><div class="star-track"><div class="star-fill star-fill-4" style="width:2.7%"></div></div><span class="star-count">7</span></div>
+          <div class="star-row"><span class="star-label">3★</span><div class="star-track"><div class="star-fill star-fill-3" style="width:1.9%"></div></div><span class="star-count">5</span></div>
+          <div class="star-row"><span class="star-label">2★</span><div class="star-track"><div class="star-fill star-fill-2" style="width:0.8%"></div></div><span class="star-count">2</span></div>
+          <div class="star-row"><span class="star-label">1★</span><div class="star-track"><div class="star-fill star-fill-1" style="width:1.9%"></div></div><span class="star-count">5</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">⭐ Ozon — распределение оценок (131 отзыв)</div>
+      <div style="display:flex;gap:20px;align-items:center">
+        <div>
+          <div style="font-family:'Unbounded',sans-serif;font-size:34px;font-weight:900;color:var(--yellow)">4.83</div>
+          <div style="font-size:11px;color:var(--muted)">Средняя оценка</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">131 отзыв</div>
+        </div>
+        <div class="star-dist" style="flex:1">
+          <div class="star-row"><span class="star-label">5★</span><div class="star-track"><div class="star-fill star-fill-5" style="width:90.8%"></div></div><span class="star-count">119</span></div>
+          <div class="star-row"><span class="star-label">4★</span><div class="star-track"><div class="star-fill star-fill-4" style="width:4.6%"></div></div><span class="star-count">6</span></div>
+          <div class="star-row"><span class="star-label">3★</span><div class="star-track"><div class="star-fill star-fill-3" style="width:3.8%"></div></div><span class="star-count">5</span></div>
+          <div class="star-row"><span class="star-label">2★</span><div class="star-track"><div class="star-fill star-fill-2" style="width:0%"></div></div><span class="star-count">0</span></div>
+          <div class="star-row"><span class="star-label">1★</span><div class="star-track"><div class="star-fill star-fill-1" style="width:0.8%"></div></div><span class="star-count">1</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSIGHT BOX -->
+  <div class="insight-box" style="margin-bottom:24px">
+    <div class="insight-box-title">🔍 КЛЮЧЕВЫЕ ИНСАЙТЫ ИЗ ОТЗЫВОВ</div>
+    <div class="three-col">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--green);margin-bottom:8px">ЗА ЧТО ЛЮБЯТ ↑</div>
+        <div class="review-pill-row">
+          <span class="review-pill pill-green">Плотная лапша</span>
+          <span class="review-pill pill-green">Не разваривается</span>
+          <span class="review-pill pill-green">Высокая острота</span>
+          <span class="review-pill pill-green">Хорошая упаковка</span>
+          <span class="review-pill pill-green">Качество соуса</span>
+          <span class="review-pill pill-green">Сделано в Корее</span>
+          <span class="review-pill pill-green">Веган-опция (Veggie)</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:8px">ПРОБЛЕМНЫЕ ТОЧКИ ↓</div>
+        <div class="review-pill-row">
+          <span class="review-pill pill-red">Нет вкуса карбонары</span>
+          <span class="review-pill pill-red">Острота перекрывает всё</span>
+          <span class="review-pill pill-red">Сравнение с Buldak</span>
+          <span class="review-pill pill-red">Состав с Е-добавками</span>
+          <span class="review-pill pill-red">Original «безвкусный»</span>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--blue);margin-bottom:8px">КАК ГОТОВЯТ / СОВЕТЫ ↗</div>
+        <div class="review-pill-row">
+          <span class="review-pill pill-blue">Заливают кипятком</span>
+          <span class="review-pill pill-blue">Добавляют яйцо</span>
+          <span class="review-pill pill-blue">Жарят в воке</span>
+          <span class="review-pill pill-blue">Оставляют полстакана жижи</span>
+          <span class="review-pill pill-blue">Добавляют сыр и зелень</span>
+          <span class="review-pill pill-blue">Регулируют соус</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ОТЗЫВЫ ТАБЫ -->
+  <div class="card">
+    <div class="card-title">💬 Репрезентативные отзывы по продуктам (Ozon)</div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showTab('all')">Все SKU</button>
+      <button class="nav-tab" onclick="showTab('carbonara')">Карбонара</button>
+      <button class="nav-tab" onclick="showTab('original')">Original</button>
+      <button class="nav-tab" onclick="showTab('blackbean')">Black Bean</button>
+      <button class="nav-tab" onclick="showTab('veggie')">Veggie & Plain</button>
+    </div>
+
+    <div id="tab-all" class="tab-content active">
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span><span class="sku-tag">Карбонара</span></div>
+        <div class="text">«Вкуснятина! Мне зашёл лучше чем Buldak. Варить не надо, кипятком и всё. Оставляйте полстакана жижи, потом специи — вуаля»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span><span class="sku-tag">Original</span></div>
+        <div class="text">«Соус действительно качественный по сравнению с Buldak. Лапша вкусная, слегка острая. Напористая.»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span><span class="sku-tag">Veggie</span></div>
+        <div class="text">«Остренькая овощная лапша. Так рада, что нашла веганский дошик! Спасибо)»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span><span class="sku-tag">Карбонара</span></div>
+        <div class="text">«Посредственно. Острота на самом деле максимальная, такая же как и у супер острой лапши. Вкус плоский, не выразительный. Можно попробовать приготовить не сливая воду — что-то в виде супа, добавить яйцо, сыр, зелень, а соуса выдавить немного для баланса.»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span><span class="sku-tag">Plain</span></div>
+        <div class="text">«Из позитивного — доставка, упаковка в идеале. Сделано в Корее. Но состав… столько Е-добавок я ещё не видела даже в китайских супах, а точнее их 10!!!! Ну и срок годности до августа — полгода есть, будет съеден.»</div>
+      </div>
+    </div>
+
+    <div id="tab-carbonara" class="tab-content">
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Вкуснятина! Мне зашёл лучше чем Buldak. Варить не надо, кипятком и всё. Оставляйте полстакана жижи, потом специи — вуаля»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Не Buldak конечно, но тоже неплохо»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Отличная по качеству, плотная лапша. Не хуже Buldak. Только очень острая, хоть и указана острота 3/5.»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Очень вкусно, немного задержалась доставка, срок годности в норме»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★☆</span></div>
+        <div class="text">«Неплохая лапша, но похуже Buldak. Соуса меньше, не такой насыщенный вкус. За свою цену очень хорошо»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★☆</span></div>
+        <div class="text">«Неплохая вполне, очень острая, прям хорошо, по остроте подойдёт любителям 👍 по вкусу средненько. Я так понимаю, это закос под Buldak, но от него там мало что есть, кроме остроты. Хотя конкретно этот вкус если сравнивать — эта лапша даже острее! Что приятно удивило 😂 Короче больше брать не стала бы, но на раз попробовать неплохо»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span></div>
+        <div class="text">«Посредственно. Острота максимальная. Вкус плоский, не выразительный. Можно приготовить не сливая воду — в виде супа с яйцом, сыром, зеленью, соуса немного для баланса.»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars bad">★☆☆☆☆</span></div>
+        <div class="text">«Не вкусно»</div>
+      </div>
+    </div>
+
+    <div id="tab-original" class="tab-content">
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Соус действительно качественный по сравнению с Buldak»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Самое острое что я ел в жизни, осторожнее»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Лапша не плохая, по остроте на уровне Buldak 4 сыра. Своих денег стоит, рекомендую.»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Вкусная лапша чем-то похожая отдалённо на Buldak, а так вкусная лапша советую»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span></div>
+        <div class="text">«Очень острая. Настолько, что кроме остроты вы ничего не чувствуете.»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span></div>
+        <div class="text">«Остренький, но вкуса никакого»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span></div>
+        <div class="text">«Остро, но не вкусно, как доширак»</div>
+      </div>
+    </div>
+
+    <div id="tab-blackbean" class="tab-content">
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Вкусняшка»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span></div>
+        <div class="text">«Хорошее качество. Пришло в твёрдой коробке»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★☆</span></div>
+        <div class="text">«Достаточно неплохо, похоже на дошираковский, только этот дороже, но чем лучше — не нашёл. Поэтому 4 из 5»</div>
+      </div>
+    </div>
+
+    <div id="tab-veggie" class="tab-content">
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span><span class="sku-tag">Veggie</span></div>
+        <div class="text">«Остренькая овощная лапша. Так рада, что нашла веганский дошик! Спасибо)»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span><span class="sku-tag">Veggie</span></div>
+        <div class="text">«Для меня, как любителя острого, оказалась приправа к лапше изрядно жгучей. Буду использовать свой фирменный соус в виде заправки и регулировать остроту.»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars">★★★★★</span><span class="sku-tag">Veggie</span></div>
+        <div class="text">«Лапша пришла вовремя в хорошем состоянии. Не такая острая как Bull Bull K-Ramen Original, отличается способ приготовления»</div>
+      </div>
+      <div class="review-card">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span><span class="sku-tag">Plain</span></div>
+        <div class="text">«Из позитивного — доставка, упаковка в идеале. Сделано в Корее. Но состав… столько Е-добавок — 10 штук! Срок годности до августа — полгода есть, будет съеден. Брала другой корейский и состав был гораздо лучше.»</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WB ОТЗЫВЫ -->
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">💬 WB — ключевые негативные отзывы (SKU 559190717 — Карбонара)</div>
+    <div class="alert alert-yellow" style="margin-bottom:16px">
+      <strong>⚠️ Важно: рейтинг 3.8★ на WB у Карбонары — это алгоритмическая угроза</strong>
+      Ниже 4.0★ — товар депрессируется в поисковой выдаче WB. Именно это объясняет отставание этого SKU на WB по сравнению с Ozon, где рейтинг 4.8★.
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="review-card" style="flex:1;min-width:280px">
+        <div class="review-card-header"><span class="stars bad">★☆☆☆☆</span></div>
+        <div class="text">«Кроме жжения во рту ничего не ощущается. Ни солёная, а уж тем более карбонарой и не пахнет. Я очень разочарована!!! Безвкусно абсолютно.»</div>
+      </div>
+      <div class="review-card" style="flex:1;min-width:280px">
+        <div class="review-card-header"><span class="stars bad">★☆☆☆☆</span></div>
+        <div class="text">«Худшее. Дешевле чем Buldak — отвратительный вкус. Лучше доплатить 200 рублей и купить Buldak, а не эту подделку. Всё слизали кроме вкуса.»</div>
+      </div>
+      <div class="review-card" style="flex:1;min-width:280px">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span></div>
+        <div class="text">«Рядом с Buldak даже рядом не стоит, там вкусная и приятная острота, тут — нет. Сама лапша хорошая, не разваривается. Соус мегаострый, прям неприятно острый с каким-то странным привкусом.»</div>
+      </div>
+      <div class="review-card" style="flex:1;min-width:280px">
+        <div class="review-card-header"><span class="stars bad">★★★☆☆</span></div>
+        <div class="text">«Имеется привкус железа. Сама лапша как будто бы дополнительно жаренная в масле из-за чего тоже имеет специфический привкус.»</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПОЧЕМУ НЕ ПОКУПАЮТ -->
+  <div class="section-header">
+    <h2>Почему товар сложнее «разгоняется» — барьеры восприятия</h2>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="alert alert-red">
+        <strong>🔴 Проблема 1 — «Карбонара» vs реальность</strong>
+        Название формирует ожидание сливочного вкуса. Фактически — острая лапша. Это главный источник негативных отзывов. Покупатель разочарован не качеством, а несоответствием ожиданиям. Та же самая ситуация на WB и Ozon.
+      </div>
+      <div class="alert alert-red">
+        <strong>🔴 Проблема 2 — «Original» без выразительного вкуса</strong>
+        Несколько отзывов: «остро, но вкуса никакого», «остро, как доширак». Покупатель ожидает корейского вкусового профиля, получает монотонную остроту. Bull Bull — неочевидное название, не несёт вкусовой ассоциации.
+      </div>
+      <div class="alert alert-yellow">
+        <strong>🟡 Проблема 3 — Состав (Е-добавки)</strong>
+        Один отзыв напрямую критикует состав: «10 Е-добавок, больше чем в китайских супах». Для аудитории, знакомой с корейской едой, это красный флаг — настоящие корейские рамены имеют более «чистый» состав.
+      </div>
+    </div>
+    <div>
+      <div class="alert alert-blue">
+        <strong>💙 Что работает — инсайт по Veggie</strong>
+        «Так рада, что нашла веганский дошик!» — Easy Veggie занимает уникальную нишу, которую конкуренты не закрывают. Нет конкурентов-рыдающих за «веган-рамен». Это самый защищённый от Buldak-сравнений SKU.
+      </div>
+      <div class="alert alert-blue">
+        <strong>💙 Что работает — инсайт по Black Bean</strong>
+        Jiangster Black Bean имеет отдельную аудиторию, не сравнивающую с Buldak. Жаджангмён (чёрная фасоль) — узнаваемый корейский формат. Рейтинг 5.0★ на WB и 4.8★ на Ozon — лучший результат из всех SKU.
+      </div>
+      <div class="alert alert-green">
+        <strong>💚 Важный инсайт — как готовят</strong>
+        Реальные покупатели готовят в воке, добавляют яйца, сыр, зелень. Лапша позиционируется ими как кулинарная основа, а не «залей кипятком». Это недоиспользованный угол коммуникации — лапша для готовки.
+      </div>
+    </div>
+  </div>
+
+  <!-- ЗАЩИТА АНАЛИТИКА -->
+  <div class="section-header">
+    <h2>Соответствие первоначального анализа реальности</h2>
+    <p>Что было рекомендовано в исходном анализе (август 2025) и что произошло на практике</p>
+  </div>
+
+  <div class="defense-card">
+    <div class="card-title" style="color:var(--accent2);margin-bottom:20px">📋 Рекомендации анализа vs решения по закупке</div>
+    
+    <div class="defense-point">
+      <div class="defense-num">1</div>
+      <div class="defense-text">
+        <strong>Рекомендация: старт с 2–3 товаров (острый + карбонара)</strong><br>
+        <span style="color:var(--accent)">Реализовано: закуплено 5 SKU × ~3 500 шт одновременно</span><br>
+        <span style="color:var(--muted);font-size:11px">Анализ прямо указывал на снижение рисков через старт с приоритетных вкусов с последующим расширением через 3–6 месяцев. Решение о полном ассортименте принималось на уровне закупок.</span>
+      </div>
+    </div>
+
+    <div class="defense-point">
+      <div class="defense-num">2</div>
+      <div class="defense-text">
+        <strong>Прогноз выручки Ozon: 205K консервативный / 297K умеренный в месяц</strong><br>
+        <span style="color:var(--green)">Факт: ~259K/мес — консервативный план перевыполнен на 26% ✓</span><br>
+        <span style="color:var(--muted);font-size:11px">По главному финансовому показателю план выполняется. WB — дополнительный канал поверх плана.</span>
+      </div>
+    </div>
+
+    <div class="defense-point">
+      <div class="defense-num">3</div>
+      <div class="defense-text">
+        <strong>Анализ указывал на доминирование Samyang (22.1%) и умеренную концентрацию (HHI 1624)</strong><br>
+        <span style="color:var(--green)">Риски конкуренции были корректно идентифицированы ✓</span><br>
+        <span style="color:var(--muted);font-size:11px">Данные подтверждают: KOI (Samyang) занимает 18.3 млн₽ на Ozon и 14.2 млн₽ на WB — безусловный лидер. Вход через уникальные вкусы (Black Bean, Veggie) — правильная стратегия, эти SKU имеют лучшие рейтинги.</span>
+      </div>
+    </div>
+
+    <div class="defense-point">
+      <div class="defense-num">4</div>
+      <div class="defense-text">
+        <strong>Рекомендация: маркетинговый бюджет 17% (умеренный сценарий)</strong><br>
+        <span style="color:var(--accent)">Сведений о фактических рекламных расходах нет для оценки</span><br>
+        <span style="color:var(--muted);font-size:11px">Без инвестиций в продвижение новый бренд органически не конкурирует с Samyang: у одного SKU Buldak — 4 737 отзывов, у нас в сумме ~1 500 на 5 SKU.</span>
+      </div>
+    </div>
+
+    <div class="alert alert-green" style="margin-top:8px">
+      <strong>📌 Итог: аналитический прогноз по ключевым метрикам выполнен</strong>
+      Выручка Ozon — 126% от консервативного плана. Риски конкуренции — корректно идентифицированы. Рекомендации по старту (2–3 SKU) — обоснованы и подтверждены практикой. Основная операционная сложность — объём закупки, принятый самостоятельно закупочным отделом.
+    </div>
+  </div>
+
+  <!-- РЕКОМЕНДАЦИИ -->
+  <div class="section-header">
+    <h2>Рекомендации по текущей ситуации</h2>
+    <p>С учётом остатков на собственном складе (не МП) и планирования следующих партий</p>
+  </div>
+
+  <div class="three-col">
+    <div class="card">
+      <div class="card-title" style="color:var(--accent2)">📦 Текущие остатки — реализация</div>
+      <div class="insight-list" style="font-size:12px">
+        <div class="insight-item"><span class="insight-icon">1️⃣</span><span><strong>Оптовые продажи через B2B-канал</strong> — предложить остатки фудсервисным операторам, кафе с азиатской кухней, тематическим магазинам корейских продуктов, хорекам с корейским меню</span></div>
+        <div class="insight-item"><span class="insight-icon">2️⃣</span><span><strong>Корпоративные подарочные наборы</strong> — собрать миксы 3–5 SKU, позиционировать как «корейский gift-set» для подарков партнёрам. Уникальные вкусы (Black Bean + Veggie) выделяются на фоне масс-маркет Buldak</span></div>
+        <div class="insight-item"><span class="insight-icon">3️⃣</span><span><strong>Фуд-блогеры / обзорщики азиатской еды</strong> — направить продукт на бесплатный обзор. Контент «сравни с Buldak» работает органически. Easy Veggie и Black Bean — особенно интересны блогерам как нишевые находки</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="color:var(--blue)">🏷️ Работа с брендом и имиджем</div>
+      <div class="insight-list" style="font-size:12px">
+        <div class="insight-item"><span class="insight-icon">🎯</span><span><strong>Переработать коммуникацию «Карбонара»</strong> — убрать ожидание сливочного вкуса. Честный нейминг: «Spicy Cream» или указание «острая интерпретация». Покупатель должен знать, что берёт.</span></div>
+        <div class="insight-item"><span class="insight-icon">🎯</span><span><strong>Продвигать «лапшу для готовки»</strong> — покупатели сами пишут, что жарят в воке, добавляют яйца и сыр. Это уникальный угол: Buldak — «поешь быстро», Kekeshi — «готовь вкусно». Контент в этом ключе снижает «дешёвый аналог»-нарратив.</span></div>
+        <div class="insight-item"><span class="insight-icon">🎯</span><span><strong>Акцент на «Сделано в Корее»</strong> — это явный плюс в отзывах. В карточках товаров и фото должно быть видно корейское производство, сертификаты.</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="color:var(--green)">📊 Следующие закупки — ориентиры</div>
+      <div class="insight-list" style="font-size:12px">
+        <div class="insight-item"><span class="insight-icon">📈</span><span><strong>Опираться на текущую динамику продаж</strong> — за 89 дней продано 2 304 шт (~26 шт/день суммарно). Любой следующий объём должен быть кратным подтверждённому темпу с учётом срока годности.</span></div>
+        <div class="insight-item"><span class="insight-icon">📈</span><span><strong>Приоритет для следующей партии</strong> — Black Bean (#3 по выручке, рейтинг 5.0★ WB / 4.8★ Ozon, нет Buldak-конкурентов) и Easy Veggie (уникальная веган-ниша, 5.0★ WB).</span></div>
+        <div class="insight-item"><span class="insight-icon">⚠️</span><span><strong>Если планируется оптовый канал</strong> — необходимо сначала получить данные о ёмкости оптового спроса. Продажи на МП и оптовый сбыт имеют разную логику закупочных объёмов, это должно быть в базовых данных перед принятием решения о партии.</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <span>KEKESHI Ramen · Конкурентный анализ · Данные: MPSTATS, 28.11.2025–25.02.2026 · Resfood / ООО Альбатрос</span>
+  <span>Дата подготовки: 26.02.2026</span>
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>
